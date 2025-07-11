@@ -1,22 +1,7 @@
-# SecureAsk API Dependencies - Simplified for deployment
-
-# Core Framework
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 pydantic==2.5.0
-
-# Graph Database
 neo4j==5.15.0
-
-# Cache
-redis==5.0.1
-
-# External APIs
 aiohttp==3.9.1
-
-# Authentication
 PyJWT==2.8.0
-
-# Utilities
 python-multipart==0.0.6
-python-dotenv==1.0.1
