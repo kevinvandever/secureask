@@ -1,0 +1,29 @@
+INFO:     Started server process [46569]
+INFO:     Waiting for application startup.
+2025-07-11 17:09:56,111 - main - INFO - 🚀 Starting SecureAsk GraphRAG API...
+2025-07-11 17:09:57,892 - db.neo4j_client - INFO - ✅ Neo4j connected: Connected
+2025-07-11 17:09:57,893 - db.redis_client - WARNING - ⚠️ Redis connection failed: Error 61 connecting to localhost:6379. Connection refused.
+2025-07-11 17:09:57,894 - db.redis_client - INFO - Continuing without cache...
+2025-07-11 17:09:57,894 - core.graphrag_engine - INFO - Initializing GraphRAG engine...
+2025-07-11 17:09:57,894 - core.graphrag_engine - INFO - ✅ GraphRAG engine initialized
+2025-07-11 17:09:57,894 - main - INFO - ✅ SecureAsk API initialized successfully
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:49356 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49358 - "POST /api/v1/auth/demo HTTP/1.1" 200 OK
+2025-07-11 17:10:06,146 - main - INFO - Processing query: What are Apple's main ESG risks according to recent filings?...
+2025-07-11 17:10:06,146 - core.graphrag_engine - INFO - Processing query 0005602a-2904-4cc8-a537-9fe0c317c982: What are Apple's main ESG risks according to recent filings?...
+2025-07-11 17:10:06,146 - core.graphrag_engine - INFO - Finding relevant nodes for: What are Apple's main ESG risks according to recent filings?
+2025-07-11 17:10:06,146 - core.graphrag_engine - INFO - Found 2 relevant nodes
+2025-07-11 17:10:06,146 - core.graphrag_engine - INFO - Extracted ticker: AAPL, search terms: apple main esg risks according
+2025-07-11 17:10:06,146 - connectors.sec_connector - INFO - Fetching real SEC filings for AAPL
+2025-07-11 17:10:06,150 - connectors.reddit_connector - INFO - Searching Reddit for: apple main esg risks according
+2025-07-11 17:10:06,341 - connectors.sec_connector - WARNING - Could not find CIK for AAPL
+2025-07-11 17:10:15,623 - connectors.reddit_connector - WARNING - Reddit API returned 429 for r/stocks
+2025-07-11 17:10:16,769 - connectors.reddit_connector - INFO - Found 6 Reddit posts for: apple main esg risks according
+2025-07-11 17:10:16,769 - core.graphrag_engine - INFO - Fetched data from 2 sources successfully
+2025-07-11 17:10:16,769 - core.graphrag_engine - INFO - Fetched data from 2 sources
+2025-07-11 17:10:16,769 - core.graphrag_engine - INFO - Updating graph with external data
+2025-07-11 17:10:16,769 - core.graphrag_engine - INFO - Running GraphRAG reasoning with real data
+2025-07-11 17:10:16,770 - main - INFO - Query completed in 10623ms
+INFO:     127.0.0.1:49360 - "POST /api/v1/query HTTP/1.1" 200 OK

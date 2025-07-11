@@ -125,7 +125,7 @@ async def create_query(
             user_id=user["user_id"]
         )
         
-        logger.info(f"Query completed in {result.processing_time}ms")
+        logger.info(f"Query completed in {result.result.processing_time}ms")
         return result
         
     except Exception as e:
