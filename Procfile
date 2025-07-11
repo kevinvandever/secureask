@@ -1,1 +1,1 @@
-web: cd apps/api && python -m uvicorn src.main:app --host 0.0.0.0 --port $PORT
+web: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
