@@ -1,0 +1,8 @@
+[build]
+  cmd = "cd apps/api && pip install -r requirements.txt"
+
+[start]
+  cmd = "cd apps/api && python -m uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+
+[variables]
+  PYTHONPATH = "apps/api/src"
