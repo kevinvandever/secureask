@@ -10,3 +10,6 @@ run = ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port 8000"]
 [[ports]]
 localPort = 8000
 externalPort = 80
+
+[env]
+PYTHONPATH = "/home/runner/workspace"
