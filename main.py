@@ -102,7 +102,7 @@ async def health_check():
 @app.post("/api/v1/query", response_model=QueryResponse)
 async def create_query(
     request: QueryRequest,
-    user: dict = Depends(AuthMiddleware.verify_token)
+    # user: dict = Depends(AuthMiddleware.verify_token)  # Disabled for hackathon demo
 ) -> QueryResponse:
     """
     Submit a query for GraphRAG processing
@@ -122,7 +122,7 @@ async def create_query(
             question=request.question,
             max_hops=request.max_hops,
             sources=request.sources,
-            user_id=user["user_id"]
+            user_id="demo-user"  # Fixed for hackathon
         )
         
         logger.info(f"Query completed in {result.result.processing_time}ms")
