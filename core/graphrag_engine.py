@@ -8,8 +8,10 @@ import logging
 import time
 import uuid
 import re
+import hashlib
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+import structlog
 
 from core.models import (
     QueryRequest, QueryResponse, QueryStatus, QueryResult, Citation, 
@@ -19,7 +21,7 @@ from connectors.sec_connector import SECConnector
 from connectors.reddit_connector import RedditConnector
 from connectors.tiktok_connector import TikTokConnector
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 class GraphRAGEngine:
     """Main GraphRAG processing engine for SecureAsk"""
@@ -71,15 +73,15 @@ class GraphRAGEngine:
         self.active_queries[query_id] = context
         
         try:
-            logger.info(f"Processing query {query_id}: {question[:100]}...")
+            logger.info("Processing new query", query_id=query_id, question_preview=question[:100])
             
             # Step 1: Initial graph traversal to find relevant nodes
             relevant_nodes = await self._find_relevant_nodes(question, max_hops)
-            logger.info(f"Found {len(relevant_nodes)} relevant nodes")
+            logger.info("Found relevant nodes", node_count=len(relevant_nodes))
             
             # Step 2: Fetch external data if needed
             external_data = await self._fetch_external_data(question, sources)
-            logger.info(f"Fetched data from {len(external_data)} sources")
+            logger.info("External data fetched", source_count=len(external_data))
             
             # Step 3: Update graph with new information
             if external_data:
@@ -106,17 +108,15 @@ class GraphRAGEngine:
                 completed_at=datetime.utcnow()
             )
             
-            # Cache the result
-            await self.redis.set(
-                f"query_result:{query_id}",
-                response.model_dump_json(),
-                ex=3600  # 1 hour TTL
-            )
+            # Cache the result using enhanced caching
+            query_hash = hashlib.md5(f"{question}:{sorted(sources)}:{max_hops}".encode()).hexdigest()
+            await self.redis.cache_query_result(query_hash, response.model_dump(), ttl=1800)
             
             return response
             
         except Exception as e:
-            logger.error(f"Query processing failed: {e}")
+            processing_time = int((time.time() - start_time) * 1000)
+            logger.error("Query processing failed", query_id=query_id, processing_time=processing_time, error=str(e), exc_info=True)
             return QueryResponse(
                 query_id=query_id,
                 question=question,
@@ -136,7 +136,7 @@ class GraphRAGEngine:
         # 2. Perform graph traversal to expand context
         # 3. Score nodes by relevance
         
-        logger.info(f"Finding relevant nodes for: {question}")
+        logger.info("Finding relevant nodes", question_preview=question[:50])
         
         # Mock relevant nodes
         return [
@@ -166,7 +166,7 @@ class GraphRAGEngine:
         # Extract search terms for social media
         search_terms = self._extract_search_terms(question)
         
-        logger.info(f"Extracted ticker: {company_ticker}, search terms: {search_terms}")
+        logger.info("Extracted query components", ticker=company_ticker, search_terms=search_terms)
         
         # Fetch data from each source concurrently
         tasks = []
@@ -183,7 +183,7 @@ class GraphRAGEngine:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             external_data = [r for r in results if isinstance(r, ExternalAPIResponse)]
         
-        logger.info(f"Fetched data from {len(external_data)} sources successfully")
+        logger.info("External data collection complete", successful_sources=len(external_data))
         return external_data
     
     def _extract_company_ticker(self, question: str) -> Optional[str]:
@@ -217,17 +217,39 @@ class GraphRAGEngine:
         return ' '.join(relevant_words[:5])  # Limit to 5 most relevant terms
     
     async def _fetch_sec_data(self, ticker: str) -> ExternalAPIResponse:
-        """Fetch SEC filing data"""
+        """Fetch SEC filing data with caching"""
+        cache_key = f"sec_filings_{ticker}_10K"
+        
         try:
+            # Check cache first
+            cached_data = await self.redis.get_cached_external_api_response("sec", cache_key)
+            if cached_data:
+                logger.info("SEC data served from cache", ticker=ticker)
+                return ExternalAPIResponse(
+                    source=SourceType.SEC,
+                    data=cached_data,
+                    metadata={"ticker": ticker, "query_time": datetime.utcnow().isoformat()},
+                    cached=True
+                )
+            
+            # Fetch fresh data
+            start_time = time.time()
             filings = await SECConnector.search_filings(ticker, "10-K")
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            # Cache the result
+            await self.redis.cache_external_api_response("sec", cache_key, filings, ttl=3600)  # 1 hour TTL
+            
+            logger.info("SEC data fetched and cached", ticker=ticker, response_time=response_time)
+            
             return ExternalAPIResponse(
                 source=SourceType.SEC,
                 data=filings,
-                metadata={"ticker": ticker, "query_time": datetime.utcnow().isoformat()},
+                metadata={"ticker": ticker, "query_time": datetime.utcnow().isoformat(), "response_time": response_time},
                 cached=False
             )
         except Exception as e:
-            logger.error(f"SEC API error: {e}")
+            logger.error("SEC API error", ticker=ticker, error=str(e), exc_info=True)
             return ExternalAPIResponse(
                 source=SourceType.SEC,
                 data=[],
@@ -236,17 +258,39 @@ class GraphRAGEngine:
             )
     
     async def _fetch_reddit_data(self, search_terms: str) -> ExternalAPIResponse:
-        """Fetch Reddit discussion data"""
+        """Fetch Reddit discussion data with caching"""
+        cache_key = f"reddit_posts_{hashlib.md5(search_terms.encode()).hexdigest()}"
+        
         try:
+            # Check cache first
+            cached_data = await self.redis.get_cached_external_api_response("reddit", cache_key)
+            if cached_data:
+                logger.info("Reddit data served from cache", search_terms=search_terms)
+                return ExternalAPIResponse(
+                    source=SourceType.REDDIT,
+                    data=cached_data,
+                    metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat()},
+                    cached=True
+                )
+            
+            # Fetch fresh data
+            start_time = time.time()
             posts = await RedditConnector.search_posts(search_terms)
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            # Cache the result (shorter TTL for social media)
+            await self.redis.cache_external_api_response("reddit", cache_key, posts, ttl=900)  # 15 minutes TTL
+            
+            logger.info("Reddit data fetched and cached", search_terms=search_terms, response_time=response_time)
+            
             return ExternalAPIResponse(
                 source=SourceType.REDDIT,
                 data=posts,
-                metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat()},
+                metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat(), "response_time": response_time},
                 cached=False
             )
         except Exception as e:
-            logger.error(f"Reddit API error: {e}")
+            logger.error("Reddit API error", search_terms=search_terms, error=str(e), exc_info=True)
             return ExternalAPIResponse(
                 source=SourceType.REDDIT,
                 data=[],
@@ -255,17 +299,39 @@ class GraphRAGEngine:
             )
     
     async def _fetch_tiktok_data(self, search_terms: str) -> ExternalAPIResponse:
-        """Fetch TikTok content data"""
+        """Fetch TikTok content data with caching"""
+        cache_key = f"tiktok_content_{hashlib.md5(search_terms.encode()).hexdigest()}"
+        
         try:
+            # Check cache first
+            cached_data = await self.redis.get_cached_external_api_response("tiktok", cache_key)
+            if cached_data:
+                logger.info("TikTok data served from cache", search_terms=search_terms)
+                return ExternalAPIResponse(
+                    source=SourceType.TIKTOK,
+                    data=cached_data,
+                    metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat()},
+                    cached=True
+                )
+            
+            # Fetch fresh data
+            start_time = time.time()
             content = await TikTokConnector.search_content(search_terms)
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            # Cache the result (shorter TTL for social media)
+            await self.redis.cache_external_api_response("tiktok", cache_key, content, ttl=900)  # 15 minutes TTL
+            
+            logger.info("TikTok data fetched and cached", search_terms=search_terms, response_time=response_time)
+            
             return ExternalAPIResponse(
                 source=SourceType.TIKTOK,
                 data=content,
-                metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat()},
+                metadata={"search_terms": search_terms, "query_time": datetime.utcnow().isoformat(), "response_time": response_time},
                 cached=False
             )
         except Exception as e:
-            logger.error(f"TikTok API error: {e}")
+            logger.error("TikTok API error", search_terms=search_terms, error=str(e), exc_info=True)
             return ExternalAPIResponse(
                 source=SourceType.TIKTOK,
                 data=[],
@@ -283,14 +349,14 @@ class GraphRAGEngine:
         # 3. Store in Neo4j
         # 4. Update embeddings
         
-        logger.info("Updating graph with external data")
+        logger.info("Updating graph with external data", source_count=len(external_data))
         pass
     
     async def _run_graphrag_reasoning(
         self, question: str, relevant_nodes: List[Dict], external_data: List[ExternalAPIResponse]
     ) -> Dict[str, Any]:
         """Run GraphRAG reasoning to generate answer using real data"""
-        logger.info("Running GraphRAG reasoning with real data")
+        logger.info("Running GraphRAG reasoning", node_count=len(relevant_nodes), external_sources=len(external_data))
         
         # Collect all data sources for analysis
         sec_data = []
@@ -442,7 +508,7 @@ class GraphRAGEngine:
         # 3. Store in Neo4j
         # 4. Generate embeddings
         
-        logger.info(f"Ingesting document from {source}: {url}")
+        logger.info("Ingesting document", source=source, url=url[:100] if url else None)
         
         return {
             "document_id": str(uuid.uuid4()),

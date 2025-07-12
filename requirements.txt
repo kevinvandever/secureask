@@ -7,3 +7,5 @@ aiohttp==3.9.1
 PyJWT==2.8.0
 python-multipart==0.0.6
 requests
+slowapi==0.1.9
+structlog==23.2.0
