@@ -20,51 +20,63 @@ class SECConnector:
     
     @classmethod
     async def search_filings(cls, company_ticker: str, filing_type: str = "10-K") -> List[Dict[str, Any]]:
-        """Search for SEC filings by company ticker using real SEC EDGAR API"""
+        """Search for SEC filings - returns demo data for hackathon"""
         try:
-            logger.info(f"Fetching real SEC filings for {company_ticker}")
+            logger.info(f"Fetching SEC filings for {company_ticker}")
             
-            async with aiohttp.ClientSession(headers=cls.HEADERS) as session:
-                # First, get the CIK for the company
-                cik = await cls._get_company_cik(session, company_ticker)
-                if not cik:
-                    logger.warning(f"Could not find CIK for {company_ticker}")
-                    return []
-                
-                # Search for filings
-                search_url = f"{cls.BASE_URL}/submissions/CIK{cik}.json"
-                
-                async with session.get(search_url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        filings = []
-                        
-                        # Parse recent filings
-                        recent_filings = data.get('filings', {}).get('recent', {})
-                        forms = recent_filings.get('form', [])
-                        dates = recent_filings.get('filingDate', [])
-                        accessions = recent_filings.get('accessionNumber', [])
-                        
-                        for i, form in enumerate(forms[:5]):  # Get last 5 filings
-                            if filing_type.upper() in form.upper():
-                                # Get filing content
-                                content = await cls._get_filing_content(session, cik, accessions[i])
-                                
-                                filings.append({
-                                    "company": company_ticker,
-                                    "filing_type": form,
-                                    "url": f"https://www.sec.gov/Archives/edgar/data/{cik}/{accessions[i].replace('-', '')}/{form.lower()}.htm",
-                                    "content": content[:2000] + "..." if len(content) > 2000 else content,  # Truncate for GraphRAG
-                                    "date": dates[i],
-                                    "cik": cik,
-                                    "accession": accessions[i]
-                                })
-                        
-                        logger.info(f"Found {len(filings)} {filing_type} filings for {company_ticker}")
-                        return filings
-                    else:
-                        logger.error(f"SEC API error: {response.status}")
-                        return []
+            # For demo, return realistic mock data
+            if company_ticker.upper() == "AAPL":
+                return [{
+                    "company": "AAPL",
+                    "filing_type": "10-K",
+                    "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019323000106/aapl-20230930.htm",
+                    "content": """Apple Inc. faces several ESG and climate-related risks that could materially affect our business:
+                    
+                    Climate Change Risks: We face both physical and transition risks related to climate change. Physical risks include 
+                    disruption to our supply chain from extreme weather events, particularly in Asia where many of our suppliers operate. 
+                    Flooding in Thailand and typhoons in China have previously caused production delays.
+                    
+                    Environmental Compliance: Increasing environmental regulations globally may require significant capital expenditures 
+                    to modify our products and manufacturing processes. The EU's circular economy requirements and right-to-repair 
+                    legislation could impact our product design and business model.
+                    
+                    Supply Chain ESG: We rely on suppliers who may not meet evolving ESG standards. Issues with conflict minerals, 
+                    labor practices, or environmental violations in our supply chain could result in reputational damage, regulatory 
+                    penalties, and operational disruptions.
+                    
+                    Carbon Neutrality Commitments: We have committed to becoming carbon neutral across our entire supply chain by 2030. 
+                    Failure to meet these targets could result in reputational harm and potential litigation from stakeholders.""",
+                    "date": "2023-11-03",
+                    "cik": "0000320193",
+                    "accession": "0000320193-23-000106"
+                }]
+            elif company_ticker.upper() == "TSLA":
+                return [{
+                    "company": "TSLA",
+                    "filing_type": "10-K",
+                    "url": "https://www.sec.gov/Archives/edgar/data/1318605/000131860524000024/tsla-20231231.htm",
+                    "content": """Tesla faces unique ESG risks as an electric vehicle manufacturer:
+                    
+                    Battery Supply Chain: Critical mineral sourcing for batteries poses significant ESG risks including environmental 
+                    damage from mining, human rights concerns in cobalt sourcing, and geopolitical risks in lithium supply.
+                    
+                    Manufacturing Environmental Impact: Despite producing zero-emission vehicles, our manufacturing processes have 
+                    substantial environmental impacts including water usage, chemical handling, and energy consumption.""",
+                    "date": "2024-01-29",
+                    "cik": "0001318605",
+                    "accession": "0001318605-24-000024"
+                }]
+            else:
+                return [{
+                    "company": company_ticker,
+                    "filing_type": filing_type,
+                    "url": f"https://www.sec.gov/Archives/edgar/data/example/{company_ticker.lower()}-10k.htm",
+                    "content": f"{company_ticker} faces various ESG risks including climate change impacts, supply chain sustainability, "
+                             f"regulatory compliance, and stakeholder expectations around environmental and social responsibility.",
+                    "date": "2024-03-15",
+                    "cik": "0000000000",
+                    "accession": "0000000000-24-000001"
+                }]
             
         except Exception as e:
             logger.error(f"SEC API error: {e}")
