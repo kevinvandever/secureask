@@ -88,6 +88,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Welcome page
+@app.get("/")
+async def root():
+    """Welcome page with API documentation"""
+    return {
+        "message": "🔍 Welcome to SecureAsk GraphRAG API",
+        "description": "Multi-hop reasoning across SEC filings, Reddit, and TikTok",
+        "endpoints": {
+            "health": "/health",
+            "query": "POST /api/v1/query",
+            "auth": "POST /api/v1/auth/demo (optional)"
+        },
+        "example_query": {
+            "url": "POST /api/v1/query",
+            "body": {
+                "question": "What are Apple's ESG risks?",
+                "sources": ["sec", "reddit", "tiktok"]
+            }
+        },
+        "hackathon": "MindStudio.ai"
+    }
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
