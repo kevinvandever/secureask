@@ -218,7 +218,7 @@ async def create_query(
             sources=request.sources,
             processing_time=processing_time,
             graph_hops=request.max_hops,
-            result_count=len(result.citations) if result.citations else 0
+            result_count=len(result.result.citations) if result.result and result.result.citations else 0
         )
         
         logger.info("Query completed", processing_time=processing_time, query_hash=query_hash)
