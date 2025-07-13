@@ -47,7 +47,8 @@ class GraphRAGEngine:
         question: str,
         max_hops: int = 2,
         sources: List[SourceType] = None,
-        user_id: str = "demo"
+        user_id: str = "demo",
+        include_answer: bool = True
     ) -> QueryResponse:
         """
         Process a query using GraphRAG
@@ -87,9 +88,9 @@ class GraphRAGEngine:
             if external_data:
                 await self._update_graph_with_external_data(external_data)
             
-            # Step 4: Run GraphRAG reasoning (mock for now)
+            # Step 4: Run GraphRAG reasoning
             result = await self._run_graphrag_reasoning(
-                question, relevant_nodes, external_data
+                question, relevant_nodes, external_data, include_answer
             )
             
             processing_time = int((time.time() - start_time) * 1000)
@@ -353,7 +354,7 @@ class GraphRAGEngine:
         pass
     
     async def _run_graphrag_reasoning(
-        self, question: str, relevant_nodes: List[Dict], external_data: List[ExternalAPIResponse]
+        self, question: str, relevant_nodes: List[Dict], external_data: List[ExternalAPIResponse], include_answer: bool = True
     ) -> Dict[str, Any]:
         """Run GraphRAG reasoning to generate answer using real data"""
         logger.info("Running GraphRAG reasoning", node_count=len(relevant_nodes), external_sources=len(external_data))
@@ -372,59 +373,46 @@ class GraphRAGEngine:
             elif response.source == SourceType.TIKTOK:
                 tiktok_data.extend(response.data)
         
-        # Build answer based on available data
-        answer_parts = []
+        # Extract question-specific content
+        answer_content = self._extract_relevant_content(question, sec_data, reddit_data, tiktok_data)
         
-        # Start with SEC official information
-        if sec_data:
-            sec_content = self._summarize_sec_data(sec_data)
-            answer_parts.append(f"According to recent SEC filings, {sec_content}")
-            
-            # Add SEC citations
-            for filing in sec_data[:2]:  # Limit to 2 main citations
-                citations.append(Citation(
-                    node_id=f"sec_{filing.get('cik', 'unknown')}",
-                    source=SourceType.SEC,
-                    url=filing.get('url', ''),
-                    snippet=filing.get('content', '')[:200] + "...",
-                    confidence=0.95
-                ).model_dump())
+        # Build comprehensive citations with full content
+        # SEC citations - increase to 5
+        for filing in sec_data[:5]:
+            content = filing.get('content', '')
+            # Extract larger, more relevant snippet based on question keywords
+            snippet = self._extract_relevant_snippet(content, question, 500)
+            citations.append(Citation(
+                node_id=f"sec_{filing.get('cik', 'unknown')}_{filing.get('accession', 'unknown')}",
+                source=SourceType.SEC,
+                url=filing.get('url', ''),
+                snippet=snippet,
+                confidence=0.95
+            ).model_dump())
         
-        # Add Reddit sentiment and discussion
-        if reddit_data:
-            reddit_summary = self._summarize_reddit_data(reddit_data)
-            answer_parts.append(f"Social media discussions on Reddit reveal {reddit_summary}")
-            
-            # Add Reddit citations
-            for post in reddit_data[:2]:  # Limit to 2 main citations
-                citations.append(Citation(
-                    node_id=f"reddit_{hash(post.get('url', ''))}",
-                    source=SourceType.REDDIT,
-                    url=post.get('url', ''),
-                    snippet=post.get('content', '')[:200] + "...",
-                    confidence=0.78
-                ).model_dump())
+        # Reddit citations - increase to 5
+        for post in reddit_data[:5]:
+            content = post.get('content', '')
+            snippet = self._extract_relevant_snippet(content, question, 400)
+            citations.append(Citation(
+                node_id=f"reddit_{abs(hash(post.get('url', '')))}",
+                source=SourceType.REDDIT,
+                url=post.get('url', ''),
+                snippet=snippet,
+                confidence=0.78
+            ).model_dump())
         
-        # Add TikTok social sentiment
-        if tiktok_data:
-            tiktok_summary = self._summarize_tiktok_data(tiktok_data)
-            answer_parts.append(f"TikTok content analysis shows {tiktok_summary}")
-            
-            # Add TikTok citations
-            for content in tiktok_data[:1]:  # Limit to 1 citation
-                citations.append(Citation(
-                    node_id=f"tiktok_{hash(content.get('url', ''))}",
-                    source=SourceType.TIKTOK,
-                    url=content.get('url', ''),
-                    snippet=content.get('content', '')[:200] + "...",
-                    confidence=0.65
-                ).model_dump())
-        
-        # Combine answer parts
-        if answer_parts:
-            answer = " ".join(answer_parts)
-        else:
-            answer = "I wasn't able to find sufficient information to provide a comprehensive answer to your question. This could be due to API limitations or the specific nature of your query."
+        # TikTok citations - increase to 3
+        for content in tiktok_data[:3]:
+            text = content.get('content', '')
+            snippet = self._extract_relevant_snippet(text, question, 300)
+            citations.append(Citation(
+                node_id=f"tiktok_{abs(hash(content.get('url', '')))}",
+                source=SourceType.TIKTOK,
+                url=content.get('url', ''),
+                snippet=snippet,
+                confidence=0.65
+            ).model_dump())
         
         # Build graph path showing reasoning flow
         graph_path = ["query_analysis"]
@@ -436,29 +424,83 @@ class GraphRAGEngine:
             graph_path.append("tiktok_content")
         graph_path.append("synthesis")
         
+        # Control answer generation based on parameter
+        if include_answer:
+            # Only generate answer if explicitly requested
+            answer = answer_content if answer_content else "Based on the citations provided, please refer to the source documents for specific details."
+        else:
+            # Return None to let MindStudio handle synthesis
+            answer = None
+        
         return {
             "answer": answer,
             "citations": citations,
-            "graph_path": graph_path
+            "graph_path": graph_path,
+            "raw_data": {
+                "sec_count": len(sec_data),
+                "reddit_count": len(reddit_data),
+                "tiktok_count": len(tiktok_data)
+            }
         }
     
-    def _summarize_sec_data(self, sec_data: List[Dict]) -> str:
-        """Summarize SEC filing data"""
-        if not sec_data:
-            return "no recent SEC filings were available for analysis."
+    def _extract_relevant_content(self, question: str, sec_data: List[Dict], reddit_data: List[Dict], tiktok_data: List[Dict]) -> str:
+        """Extract question-specific content from all sources"""
+        # Return None to let MindStudio handle synthesis from raw citations
+        # This prevents generic templated responses
+        return None
+    
+    def _extract_relevant_snippet(self, content: str, question: str, max_length: int = 500) -> str:
+        """Extract relevant snippet based on question keywords"""
+        if not content:
+            return "No content available"
         
-        # Extract key themes from SEC data
-        key_themes = []
-        for filing in sec_data:
-            content = filing.get('content', '').lower()
-            if 'risk' in content or 'climate' in content:
-                key_themes.append("regulatory and climate risks")
-            if 'supply' in content or 'chain' in content:
-                key_themes.append("supply chain considerations")
-            if 'esg' in content or 'environment' in content:
-                key_themes.append("ESG factors")
+        # Extract keywords from question
+        keywords = []
+        question_lower = question.lower()
         
-        return f"the company has disclosed {', '.join(set(key_themes)) if key_themes else 'various business factors'} in their regulatory filings."
+        # Look for specific terms in the question
+        important_terms = ['climate', 'risk', 'esg', 'disclosure', 'apple', 'tesla', 
+                          'supply chain', 'regulatory', 'environmental', 'social', 
+                          'governance', '10-k', '10k', '2024', '2023', 'carbon', 
+                          'emissions', 'sustainability']
+        
+        for term in important_terms:
+            if term in question_lower:
+                keywords.append(term)
+        
+        # Find the most relevant section
+        sentences = content.split('. ')
+        relevant_sentences = []
+        
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            # Score sentence based on keyword matches
+            score = sum(1 for keyword in keywords if keyword in sentence_lower)
+            if score > 0:
+                relevant_sentences.append((score, sentence))
+        
+        # Sort by relevance and take top sentences
+        relevant_sentences.sort(key=lambda x: x[0], reverse=True)
+        
+        # Build snippet from most relevant sentences
+        snippet_parts = []
+        current_length = 0
+        
+        for score, sentence in relevant_sentences:
+            if current_length + len(sentence) <= max_length:
+                snippet_parts.append(sentence)
+                current_length += len(sentence)
+            else:
+                break
+        
+        if snippet_parts:
+            snippet = '. '.join(snippet_parts)
+            if len(snippet) > max_length:
+                snippet = snippet[:max_length] + '...'
+            return snippet
+        
+        # Fallback to beginning of content if no keywords match
+        return content[:max_length] + '...' if len(content) > max_length else content
     
     def _summarize_reddit_data(self, reddit_data: List[Dict]) -> str:
         """Summarize Reddit discussion data"""

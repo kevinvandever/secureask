@@ -36,10 +36,11 @@ class QueryRequest(BaseModel):
         default=[SourceType.SEC, SourceType.REDDIT, SourceType.TIKTOK],
         description="Data sources to include"
     )
+    include_answer: bool = Field(True, description="Whether to generate an answer or just return citations")
 
 class QueryResult(BaseModel):
     """Result data for completed queries"""
-    answer: str = Field(..., description="Generated answer")
+    answer: Optional[str] = Field(None, description="Generated answer (optional)")
     citations: List[Citation] = Field(..., description="Supporting citations")
     graph_path: List[str] = Field(..., description="Graph node IDs traversed")
     processing_time: int = Field(..., description="Processing time in milliseconds")

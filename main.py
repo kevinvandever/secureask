@@ -199,7 +199,8 @@ async def create_query(
             question=request.question,
             max_hops=request.max_hops,
             sources=request.sources,
-            user_id="demo-user"  # Fixed for hackathon
+            user_id="demo-user",  # Fixed for hackathon
+            include_answer=request.include_answer
         )
         
         processing_time = round((time.time() - start_time) * 1000, 2)
