@@ -22,6 +22,8 @@ SecureAsk is a production-ready GraphRAG (Graph Retrieval-Augmented Generation) 
 - **Real-time data fetching** from SEC EDGAR, Reddit, and TikTok APIs
 - **Graph-first architecture** using Neo4j for relationship modeling
 - **Explainable AI** with complete citation trails and reasoning paths
+- **Citation-based synthesis** with configurable answer generation
+- **Enhanced snippet extraction** for question-specific relevance
 
 ### 🏭 Production-Ready Infrastructure
 - **Redis caching layer** with intelligent TTL management
@@ -73,8 +75,9 @@ graph TB
 1. **Query Processing**: Intelligent extraction of company tickers and search terms
 2. **Graph Traversal**: Semantic search across existing knowledge graph
 3. **Live Data Fetching**: Parallel API calls to external sources with caching
-4. **Knowledge Synthesis**: GraphRAG reasoning with multi-source evidence
-5. **Response Generation**: Structured answers with citations and confidence scores
+4. **Citation Extraction**: Question-specific snippet extraction with keyword matching
+5. **Knowledge Synthesis**: GraphRAG reasoning with multi-source evidence
+6. **Response Generation**: Structured answers with numbered citations and clickable footnotes
 
 ## 📊 API Endpoints
 
@@ -87,7 +90,8 @@ Content-Type: application/json
 {
     "question": "What are Apple's ESG risks?",
     "sources": ["sec", "reddit", "tiktok"],
-    "max_hops": 2
+    "max_hops": 2,
+    "include_answer": true
 }
 ```
 
@@ -98,13 +102,15 @@ Content-Type: application/json
     "question": "What are Apple's ESG risks?",
     "status": "completed",
     "result": {
-        "answer": "According to recent SEC filings, Apple faces...",
+        "answer": "According to recent SEC filings, Apple faces climate change risks including supply chain disruption and transition costs. [1][2][3]",
         "citations": [
             {
                 "source": "sec",
                 "url": "https://sec.gov/...",
-                "snippet": "Apple Inc. faces several ESG risks...",
-                "confidence": 0.95
+                "snippet": "Apple Inc. faces several ESG and climate-related risks including supply chain disruption from extreme weather events...",
+                "confidence": 0.95,
+                "filing_type": "10-K",
+                "date": "2023-11-03"
             }
         ],
         "graph_path": ["query_analysis", "sec_filings", "synthesis"],
@@ -262,6 +268,13 @@ Set `LOG_LEVEL=DEBUG` for detailed request/response logging.
 ## 🚀 Live Demo
 
 **API Endpoint:** https://c812e514-d8f5-42db-ad93-bbc36e2f406b-00-34xg5tvub1ese.picard.replit.dev
+
+**Recent Fixes & Improvements:**
+- ✅ Fixed generic response issue - now returns question-specific citations
+- ✅ Added `include_answer` parameter for flexible response formats
+- ✅ Enhanced snippet extraction with keyword-based relevance
+- ✅ Expanded mock data with multiple SEC filings per company
+- ✅ Optimized MindStudio integration with live footnotes
 
 **Supported Companies:**
 - Apple (AAPL), Tesla (TSLA), Microsoft (MSFT)
