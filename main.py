@@ -103,8 +103,13 @@ app.add_middleware(
 # Welcome page
 @app.get("/")
 async def root():
-    """Welcome page with API documentation"""
-    return {"status": "healthy", "service": "SecureAsk GraphRAG API"}
+    """Health check for deployment"""
+    return {
+        "status": "ok",
+        "health": "healthy", 
+        "service": "SecureAsk GraphRAG API",
+        "version": "1.0.0"
+    }
 
 # Health check endpoint with detailed status
 @app.get("/health")
