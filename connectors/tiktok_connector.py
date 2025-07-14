@@ -26,7 +26,7 @@ class TikTokConnector:
             
             apify_token = os.getenv('APIFY_TOKEN')
             if not apify_token:
-                logger.warning("No APIFY_TOKEN found, using fallback data")
+                logger.warning("USING MOCK DATA: No APIFY_TOKEN found. See ENABLE_REAL_DATA.md to enable real TikTok data")
                 return await cls._get_fallback_data(query)
             
             # Run TikTok scraper

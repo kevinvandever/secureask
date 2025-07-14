@@ -48,6 +48,7 @@ class RedditConnector:
             
         except Exception as e:
             logger.error(f"Reddit API error: {e}")
+            logger.warning("USING MOCK DATA: No Reddit credentials configured. See ENABLE_REAL_DATA.md")
             # Return multiple fallback posts if APIs fail
             return [
                 {
