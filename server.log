@@ -27,3 +27,54 @@ INFO:     127.0.0.1:49358 - "POST /api/v1/auth/demo HTTP/1.1" 200 OK
 2025-07-11 17:10:16,769 - core.graphrag_engine - INFO - Running GraphRAG reasoning with real data
 2025-07-11 17:10:16,770 - main - INFO - Query completed in 10623ms
 INFO:     127.0.0.1:49360 - "POST /api/v1/query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52419 - "POST /api/v1/query HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:52488 - "POST /api/v1/query HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:52554 - "POST /api/v1/query HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:52610 - "POST /api/v1/auth/demo HTTP/1.1" 200 OK
+2025-07-14 12:51:08,448 - main - INFO - Processing query: What are Apple ESG risks?...
+2025-07-14 12:51:08,448 - core.graphrag_engine - INFO - Processing query aca29b21-a3ff-49bb-af66-db45a9827218: What are Apple ESG risks?...
+2025-07-14 12:51:08,448 - core.graphrag_engine - INFO - Finding relevant nodes for: What are Apple ESG risks?
+2025-07-14 12:51:08,448 - core.graphrag_engine - INFO - Found 2 relevant nodes
+2025-07-14 12:51:08,449 - core.graphrag_engine - INFO - Extracted ticker: AAPL, search terms: apple esg risks
+2025-07-14 12:51:08,449 - connectors.sec_connector - INFO - Fetching real SEC filings for AAPL
+2025-07-14 12:51:08,449 - connectors.reddit_connector - INFO - Searching Reddit for: apple esg risks
+2025-07-14 12:51:08,449 - connectors.tiktok_connector - INFO - Searching TikTok for: apple esg risks
+2025-07-14 12:51:08,449 - connectors.tiktok_connector - WARNING - No APIFY_TOKEN found, using fallback data
+2025-07-14 12:51:08,896 - connectors.sec_connector - WARNING - Could not find CIK for AAPL
+2025-07-14 12:51:12,218 - connectors.reddit_connector - INFO - Found 9 Reddit posts for: apple esg risks
+2025-07-14 12:51:12,218 - core.graphrag_engine - INFO - Fetched data from 3 sources successfully
+2025-07-14 12:51:12,218 - core.graphrag_engine - INFO - Fetched data from 3 sources
+2025-07-14 12:51:12,218 - core.graphrag_engine - INFO - Updating graph with external data
+2025-07-14 12:51:12,218 - core.graphrag_engine - INFO - Running GraphRAG reasoning with real data
+2025-07-14 12:51:12,220 - main - INFO - Query completed in 3770ms
+INFO:     127.0.0.1:52640 - "POST /api/v1/query HTTP/1.1" 200 OK
+2025-07-14 12:51:29,970 - main - INFO - Processing query: What are Apple ESG risks?...
+2025-07-14 12:51:29,970 - core.graphrag_engine - INFO - Processing query 69d7fbd1-d016-4907-b565-c740404e8939: What are Apple ESG risks?...
+2025-07-14 12:51:29,970 - core.graphrag_engine - INFO - Finding relevant nodes for: What are Apple ESG risks?
+2025-07-14 12:51:29,970 - core.graphrag_engine - INFO - Found 2 relevant nodes
+2025-07-14 12:51:29,970 - core.graphrag_engine - INFO - Extracted ticker: AAPL, search terms: apple esg risks
+2025-07-14 12:51:29,970 - connectors.sec_connector - INFO - Fetching real SEC filings for AAPL
+2025-07-14 12:51:29,970 - connectors.reddit_connector - INFO - Searching Reddit for: apple esg risks
+2025-07-14 12:51:29,970 - connectors.tiktok_connector - INFO - Searching TikTok for: apple esg risks
+2025-07-14 12:51:29,970 - connectors.tiktok_connector - WARNING - No APIFY_TOKEN found, using fallback data
+2025-07-14 12:51:30,116 - connectors.sec_connector - WARNING - Could not find CIK for AAPL
+2025-07-14 12:51:32,543 - connectors.reddit_connector - INFO - Found 9 Reddit posts for: apple esg risks
+2025-07-14 12:51:32,543 - core.graphrag_engine - INFO - Fetched data from 3 sources successfully
+2025-07-14 12:51:32,543 - core.graphrag_engine - INFO - Fetched data from 3 sources
+2025-07-14 12:51:32,543 - core.graphrag_engine - INFO - Updating graph with external data
+2025-07-14 12:51:32,543 - core.graphrag_engine - INFO - Running GraphRAG reasoning with real data
+2025-07-14 12:51:32,544 - main - INFO - Query completed in 2573ms
+INFO:     127.0.0.1:52662 - "POST /api/v1/query HTTP/1.1" 200 OK
+2025-07-14 12:52:07,900 - main - INFO - Processing query: What are Apple ESG risks?...
+2025-07-14 12:52:07,900 - core.graphrag_engine - INFO - Processing query 040e257d-a94a-46c1-b8fd-9d0e4d6ae0bf: What are Apple ESG risks?...
+2025-07-14 12:52:07,900 - core.graphrag_engine - INFO - Finding relevant nodes for: What are Apple ESG risks?
+2025-07-14 12:52:07,900 - core.graphrag_engine - INFO - Found 2 relevant nodes
+2025-07-14 12:52:07,900 - core.graphrag_engine - INFO - Extracted ticker: AAPL, search terms: apple esg risks
+2025-07-14 12:52:07,900 - connectors.sec_connector - INFO - Fetching real SEC filings for AAPL
+2025-07-14 12:52:08,123 - connectors.sec_connector - WARNING - Could not find CIK for AAPL
+2025-07-14 12:52:08,123 - core.graphrag_engine - INFO - Fetched data from 1 sources successfully
+2025-07-14 12:52:08,123 - core.graphrag_engine - INFO - Fetched data from 1 sources
+2025-07-14 12:52:08,123 - core.graphrag_engine - INFO - Updating graph with external data
+2025-07-14 12:52:08,124 - core.graphrag_engine - INFO - Running GraphRAG reasoning with real data
+2025-07-14 12:52:08,124 - main - INFO - Query completed in 223ms
+INFO:     127.0.0.1:52699 - "POST /api/v1/query HTTP/1.1" 200 OK

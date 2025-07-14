@@ -172,16 +172,23 @@ class GraphRAGEngine:
         search_terms = self._extract_search_terms(question)
         
         logger.info("Extracted query components", ticker=company_ticker, search_terms=search_terms)
+        logger.info("Sources requested", sources=sources, source_types=[type(s).__name__ for s in sources])
         
         # Fetch data from each source concurrently
         tasks = []
         for source in sources:
+            logger.info("Processing source", source=source, source_type=type(source).__name__)
             if source == SourceType.SEC and company_ticker:
+                logger.info("Adding SEC task", ticker=company_ticker)
                 tasks.append(self._fetch_sec_data(company_ticker))
             elif source == SourceType.REDDIT:
+                logger.info("Adding Reddit task", search_terms=search_terms)
                 tasks.append(self._fetch_reddit_data(search_terms))
             elif source == SourceType.TIKTOK:
+                logger.info("Adding TikTok task", search_terms=search_terms)
                 tasks.append(self._fetch_tiktok_data(search_terms))
+            else:
+                logger.warning("Unmatched source", source=source, source_value=str(source))
         
         # Execute all fetches concurrently
         if tasks:
