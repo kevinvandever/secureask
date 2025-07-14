@@ -166,6 +166,7 @@ async def create_query(
     http_request: Request,
     # user: dict = Depends(AuthMiddleware.verify_token)  # Disabled for hackathon demo
 ) -> QueryResponse:
+    logger.info("📥 API ENDPOINT HIT", question=request.question, sources=request.sources)
     """
     Submit a query for GraphRAG processing with caching and rate limiting
     
