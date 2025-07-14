@@ -199,6 +199,7 @@ async def create_query(
         
         log_cache_operation("miss", query_hash, False)
         logger.info("Processing new query", query_preview=request.question[:100])
+        logger.info("🔍 ABOUT TO CALL GRAPHRAG ENGINE", engine_available=bool(graphrag_engine))
         
         # Process the query using GraphRAG
         result = await graphrag_engine.process_query(
