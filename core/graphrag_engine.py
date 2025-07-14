@@ -109,9 +109,13 @@ class GraphRAGEngine:
                 completed_at=datetime.utcnow()
             )
             
-            # Cache the result using enhanced caching
-            query_hash = hashlib.md5(f"{question}:{sorted(sources)}:{max_hops}".encode()).hexdigest()
-            await self.redis.cache_query_result(query_hash, response.model_dump(), ttl=1800)
+            # Cache the result using enhanced caching (only if Redis is available)
+            if self.redis:
+                try:
+                    query_hash = hashlib.md5(f"{question}:{sorted(sources)}:{max_hops}".encode()).hexdigest()
+                    await self.redis.cache_query_result(query_hash, response.model_dump(), ttl=1800)
+                except Exception as cache_error:
+                    logger.warning("Failed to cache query result", error=str(cache_error))
             
             return response
             
@@ -222,8 +226,14 @@ class GraphRAGEngine:
         cache_key = f"sec_filings_{ticker}_10K"
         
         try:
-            # Check cache first
-            cached_data = await self.redis.get_cached_external_api_response("sec", cache_key)
+            # Check cache first (only if Redis is available)
+            cached_data = None
+            if self.redis:
+                try:
+                    cached_data = await self.redis.get_cached_external_api_response("sec", cache_key)
+                except Exception as cache_error:
+                    logger.warning("Redis cache unavailable", error=str(cache_error))
+            
             if cached_data:
                 logger.info("SEC data served from cache", ticker=ticker)
                 return ExternalAPIResponse(
@@ -238,8 +248,12 @@ class GraphRAGEngine:
             filings = await SECConnector.search_filings(ticker, "10-K")
             response_time = round((time.time() - start_time) * 1000, 2)
             
-            # Cache the result
-            await self.redis.cache_external_api_response("sec", cache_key, filings, ttl=3600)  # 1 hour TTL
+            # Cache the result - only if Redis is available
+            if self.redis:
+                try:
+                    await self.redis.cache_external_api_response("sec", cache_key, filings, ttl=3600)  # 1 hour TTL
+                except Exception as cache_error:
+                    logger.warning("Failed to cache SEC data", error=str(cache_error))
             
             logger.info("SEC data fetched and cached", ticker=ticker, response_time=response_time)
             
@@ -263,8 +277,14 @@ class GraphRAGEngine:
         cache_key = f"reddit_posts_{hashlib.md5(search_terms.encode()).hexdigest()}"
         
         try:
-            # Check cache first
-            cached_data = await self.redis.get_cached_external_api_response("reddit", cache_key)
+            # Check cache first (only if Redis is available)
+            cached_data = None
+            if self.redis:
+                try:
+                    cached_data = await self.redis.get_cached_external_api_response("reddit", cache_key)
+                except Exception as cache_error:
+                    logger.warning("Redis cache unavailable", error=str(cache_error))
+            
             if cached_data:
                 logger.info("Reddit data served from cache", search_terms=search_terms)
                 return ExternalAPIResponse(
@@ -279,8 +299,12 @@ class GraphRAGEngine:
             posts = await RedditConnector.search_posts(search_terms)
             response_time = round((time.time() - start_time) * 1000, 2)
             
-            # Cache the result (shorter TTL for social media)
-            await self.redis.cache_external_api_response("reddit", cache_key, posts, ttl=900)  # 15 minutes TTL
+            # Cache the result (shorter TTL for social media) - only if Redis is available
+            if self.redis:
+                try:
+                    await self.redis.cache_external_api_response("reddit", cache_key, posts, ttl=900)  # 15 minutes TTL
+                except Exception as cache_error:
+                    logger.warning("Failed to cache Reddit data", error=str(cache_error))
             
             logger.info("Reddit data fetched and cached", search_terms=search_terms, response_time=response_time)
             
@@ -304,8 +328,14 @@ class GraphRAGEngine:
         cache_key = f"tiktok_content_{hashlib.md5(search_terms.encode()).hexdigest()}"
         
         try:
-            # Check cache first
-            cached_data = await self.redis.get_cached_external_api_response("tiktok", cache_key)
+            # Check cache first (only if Redis is available)
+            cached_data = None
+            if self.redis:
+                try:
+                    cached_data = await self.redis.get_cached_external_api_response("tiktok", cache_key)
+                except Exception as cache_error:
+                    logger.warning("Redis cache unavailable", error=str(cache_error))
+            
             if cached_data:
                 logger.info("TikTok data served from cache", search_terms=search_terms)
                 return ExternalAPIResponse(
@@ -320,8 +350,12 @@ class GraphRAGEngine:
             content = await TikTokConnector.search_content(search_terms)
             response_time = round((time.time() - start_time) * 1000, 2)
             
-            # Cache the result (shorter TTL for social media)
-            await self.redis.cache_external_api_response("tiktok", cache_key, content, ttl=900)  # 15 minutes TTL
+            # Cache the result (shorter TTL for social media) - only if Redis is available
+            if self.redis:
+                try:
+                    await self.redis.cache_external_api_response("tiktok", cache_key, content, ttl=900)  # 15 minutes TTL
+                except Exception as cache_error:
+                    logger.warning("Failed to cache TikTok data", error=str(cache_error))
             
             logger.info("TikTok data fetched and cached", search_terms=search_terms, response_time=response_time)
             
@@ -531,9 +565,10 @@ class GraphRAGEngine:
     async def get_query_result(self, query_id: str, user_id: str) -> Optional[QueryResponse]:
         """Retrieve cached query result"""
         try:
-            cached_result = await self.redis.get(f"query_result:{query_id}")
-            if cached_result:
-                return QueryResponse.model_validate_json(cached_result)
+            if self.redis:
+                cached_result = await self.redis.get(f"query_result:{query_id}")
+                if cached_result:
+                    return QueryResponse.model_validate_json(cached_result)
             return None
         except Exception as e:
             logger.error(f"Failed to retrieve query result: {e}")
