@@ -52,8 +52,6 @@ class GraphRAGEngine:
     ) -> QueryResponse:
         """
         Process a query using GraphRAG
-        """
-        logger.info("🚀 PROCESS_QUERY CALLED", question=question, sources=sources, max_hops=max_hops, include_answer=include_answer)
         
         This is the main entry point that:
         1. Creates initial graph context
@@ -61,6 +59,7 @@ class GraphRAGEngine:
         3. Runs GraphRAG reasoning
         4. Returns structured results
         """
+        logger.info("🚀 PROCESS_QUERY CALLED", question=question, sources=sources, max_hops=max_hops, include_answer=include_answer)
         start_time = time.time()
         query_id = str(uuid.uuid4())
         sources = sources or [SourceType.SEC, SourceType.REDDIT, SourceType.TIKTOK]
