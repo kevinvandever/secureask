@@ -53,7 +53,11 @@ async def lifespan(app: FastAPI):
         await neo4j_client.connect()
         
         redis_client = RedisClient()
-        await redis_client.connect()
+        try:
+            await redis_client.connect()
+        except Exception as e:
+            logger.warning(f"Redis connection failed, continuing without cache: {e}")
+            redis_client = None
         
         # Initialize rate limiter
         rate_limiter = RateLimitMiddleware(redis_client)
@@ -185,11 +189,13 @@ async def create_query(
         ).hexdigest()
         
         # Check cache first
-        cached_result = await redis_client.get_cached_query_result(query_hash)
-        if cached_result:
-            log_cache_operation("hit", query_hash, True)
-            logger.info("Query served from cache", query_hash=query_hash)
-            return QueryResponse(**cached_result)
+        cached_result = None
+        if redis_client:
+            cached_result = await redis_client.get_cached_query_result(query_hash)
+            if cached_result:
+                log_cache_operation("hit", query_hash, True)
+                logger.info("Query served from cache", query_hash=query_hash)
+                return QueryResponse(**cached_result)
         
         log_cache_operation("miss", query_hash, False)
         logger.info("Processing new query", query_preview=request.question[:100])
@@ -206,11 +212,12 @@ async def create_query(
         processing_time = round((time.time() - start_time) * 1000, 2)
         
         # Cache the result
-        await redis_client.cache_query_result(
-            query_hash, 
-            result.model_dump(), 
-            ttl=1800  # 30 minutes
-        )
+        if redis_client:
+            await redis_client.cache_query_result(
+                query_hash, 
+                result.model_dump(), 
+                ttl=1800  # 30 minutes
+            )
         
         # Log query metrics
         log_query_processing(
