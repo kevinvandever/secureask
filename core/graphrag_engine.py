@@ -52,6 +52,8 @@ class GraphRAGEngine:
     ) -> QueryResponse:
         """
         Process a query using GraphRAG
+        """
+        logger.info("🚀 PROCESS_QUERY CALLED", question=question, sources=sources, max_hops=max_hops, include_answer=include_answer)
         
         This is the main entry point that:
         1. Creates initial graph context
