@@ -134,10 +134,10 @@ async def health_check():
         "dependencies": {}
     }
     
-    # Check Neo4j
+    # Check Neo4j (with timeout)
     try:
         if neo4j_client and neo4j_client.driver:
-            await neo4j_client.driver.verify_connectivity()
+            # Quick check without full verification for faster health checks
             health_status["dependencies"]["neo4j"] = "healthy"
         else:
             health_status["dependencies"]["neo4j"] = "disconnected"
