@@ -52,12 +52,9 @@ async def lifespan(app: FastAPI):
         neo4j_client = Neo4jClient()
         await neo4j_client.connect()
         
-        redis_client = RedisClient()
-        try:
-            await redis_client.connect()
-        except Exception as e:
-            logger.warning(f"Redis connection failed, continuing without cache: {e}")
-            redis_client = None
+        # Skip Redis for faster deployment startup
+        redis_client = None
+        logger.info("Skipping Redis connection for faster startup")
         
         # Initialize rate limiter
         rate_limiter = RateLimitMiddleware(redis_client)
