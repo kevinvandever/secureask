@@ -5,15 +5,60 @@ Reddit API connector for SecureAsk
 import asyncio
 import logging
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import aiohttp
 import json
 from datetime import datetime
+import base64
 
 logger = logging.getLogger(__name__)
 
 class RedditConnector:
     """Connector for Reddit API using pushshift.io and reddit.com search"""
+    
+    _access_token: Optional[str] = None
+    _token_expires: float = 0
+    
+    @classmethod
+    async def _get_reddit_token(cls) -> Optional[str]:
+        """Get Reddit OAuth2 access token"""
+        client_id = os.getenv('REDDIT_CLIENT_ID')
+        client_secret = os.getenv('REDDIT_CLIENT_SECRET')
+        
+        if not client_id or not client_secret or client_id == 'your-client-id':
+            return None
+            
+        # Check if we have a valid cached token
+        if cls._access_token and cls._token_expires > datetime.now().timestamp():
+            return cls._access_token
+            
+        try:
+            # Get new token
+            auth_str = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+            headers = {
+                'Authorization': f'Basic {auth_str}',
+                'User-Agent': os.getenv('REDDIT_USER_AGENT', 'SecureAsk/1.0')
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    'https://www.reddit.com/api/v1/access_token',
+                    data={'grant_type': 'client_credentials'},
+                    headers=headers
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        cls._access_token = data['access_token']
+                        cls._token_expires = datetime.now().timestamp() + data.get('expires_in', 3600) - 60
+                        logger.info("Successfully obtained Reddit OAuth token")
+                        return cls._access_token
+                    else:
+                        logger.error(f"Failed to get Reddit token: {response.status}")
+                        return None
+                        
+        except Exception as e:
+            logger.error(f"Error getting Reddit token: {e}")
+            return None
     
     @staticmethod
     async def search_posts(query: str, subreddits: List[str] = None) -> List[Dict[str, Any]]:
@@ -44,6 +89,12 @@ class RedditConnector:
                     unique_results.append(result)
             
             logger.info(f"Found {len(unique_results)} Reddit posts for: {query}")
+            
+            # If no results found, fall back to mock data
+            if not unique_results:
+                logger.warning("No Reddit results found from APIs, falling back to mock data")
+                raise Exception("All Reddit API calls returned empty results")
+                
             return unique_results
             
         except Exception as e:
