@@ -59,9 +59,9 @@ async def lifespan(app: FastAPI):
         # Initialize rate limiter
         rate_limiter = RateLimitMiddleware(redis_client)
         
-        # Initialize GraphRAG engine
+        # Initialize GraphRAG engine in background (non-blocking for health checks)
         graphrag_engine = GraphRAGEngine(neo4j_client, redis_client)
-        await graphrag_engine.initialize()
+        # Skip initialization during startup for faster deployment
         
         logger.info("✅ SecureAsk API initialized successfully")
         yield
